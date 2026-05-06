@@ -6,11 +6,12 @@ interface Filters {
   obras?: string[]
 }
 
-interface ClienteRanking {
+export interface ClienteRanking {
   cliente: string
   faturado: number
   recebido: number
   pendente: number
+  empreendimentos: string[]
 }
 
 interface AgingBucket {
@@ -66,10 +67,10 @@ export async function getClienteRanking(filters?: Filters): Promise<ClienteRanki
   const supabase = await createClient()
 
   try {
-    // Fetch faturamentos
+    // Fetch faturamentos (include centro_de_custo for empreendimento names)
     let fatQuery = supabase
       .from('faturamentos')
-      .select('cliente, valor_parcela, id_obra')
+      .select('cliente, valor_parcela, id_obra, centro_de_custo')
     if (filters?.obras?.length) fatQuery = fatQuery.in('id_obra', filters.obras.map(Number))
     if (filters?.dateFrom) fatQuery = fatQuery.gte('data_competencia', filters.dateFrom)
     if (filters?.dateTo) fatQuery = fatQuery.lte('data_competencia', filters.dateTo)
@@ -84,30 +85,32 @@ export async function getClienteRanking(filters?: Filters): Promise<ClienteRanki
     if (filters?.dateTo) recQuery = recQuery.lte('data_recebimento', filters.dateTo)
     const { data: recData } = await recQuery.limit(10000)
 
-    // Group faturado by client
-    const clienteMap = new Map<string, { faturado: number; recebido: number }>()
+    // Group faturado + empreendimentos by client
+    const clienteMap = new Map<string, { faturado: number; recebido: number; empreendimentos: Set<string> }>()
 
     for (const f of fatData ?? []) {
       const nome = f.cliente?.trim() || 'Sem Cliente'
-      const existing = clienteMap.get(nome) ?? { faturado: 0, recebido: 0 }
+      const existing = clienteMap.get(nome) ?? { faturado: 0, recebido: 0, empreendimentos: new Set() }
       existing.faturado += Number(f.valor_parcela) || 0
+      if (f.centro_de_custo?.trim()) existing.empreendimentos.add(f.centro_de_custo.trim())
       clienteMap.set(nome, existing)
     }
 
     for (const r of recData ?? []) {
       const nome = r.cliente?.trim() || 'Sem Cliente'
-      const existing = clienteMap.get(nome) ?? { faturado: 0, recebido: 0 }
+      const existing = clienteMap.get(nome) ?? { faturado: 0, recebido: 0, empreendimentos: new Set() }
       existing.recebido += Number(r.valor_recebido) || 0
       clienteMap.set(nome, existing)
     }
 
     const result: ClienteRanking[] = []
-    for (const [cliente, { faturado, recebido }] of clienteMap.entries()) {
+    for (const [cliente, { faturado, recebido, empreendimentos }] of clienteMap.entries()) {
       result.push({
         cliente,
         faturado,
         recebido,
         pendente: Math.max(0, faturado - recebido),
+        empreendimentos: [...empreendimentos].sort(),
       })
     }
 

@@ -39,14 +39,25 @@ export default async function ClientesPage({ searchParams }: PageProps) {
               href={`/clientes/${encodeURIComponent(c.cliente)}`}
               className="flex items-center justify-between px-5 py-3.5 hover:bg-[var(--color-surface-50)] dark:hover:bg-white/5 transition-colors group"
             >
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900)]/40 text-sm font-bold text-[var(--color-primary-600)] dark:text-[var(--color-primary-400)]">
                   {c.cliente.charAt(0).toUpperCase()}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
-                    {c.cliente}
-                  </p>
+                <div className="min-w-0 flex-1">
+                  {/* Name + empreendimento chips on the same line */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">
+                      {c.cliente}
+                    </p>
+                    {c.empreendimentos.map(emp => (
+                      <span
+                        key={emp}
+                        className="inline-flex shrink-0 items-center rounded-md bg-[var(--color-primary-100)] dark:bg-[var(--color-primary-900)]/40 px-2 py-0.5 text-[10px] font-semibold text-[var(--color-primary-700)] dark:text-[var(--color-primary-300)] uppercase tracking-wide"
+                      >
+                        {emp}
+                      </span>
+                    ))}
+                  </div>
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                     Faturado: {formatCurrency(c.faturado)}
                     {c.pendente > 0 && (
@@ -55,7 +66,7 @@ export default async function ClientesPage({ searchParams }: PageProps) {
                   </p>
                 </div>
               </div>
-              <ArrowRight className="size-4 text-[var(--text-secondary)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              <ArrowRight className="size-4 text-[var(--text-secondary)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3" />
             </Link>
           ))
         ) : (
