@@ -50,7 +50,8 @@ function getBudgetHealth(pct: number) {
 export function ObraRow({
   id,
   nome,
-  cliente,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  cliente: _cliente,
   status,
   progressoOrcamentario,
   valorOrcado,
@@ -70,9 +71,6 @@ export function ObraRow({
           <p className="text-[13px] font-semibold text-[var(--color-surface-800)] dark:text-[var(--color-surface-100)] truncate leading-snug group-hover:text-[var(--color-primary-500)] transition-colors">
             {nome}
           </p>
-          {cliente && (
-            <p className="text-[11px] text-[var(--color-surface-400)] truncate mt-0.5">{cliente}</p>
-          )}
         </div>
 
         {/* Orçado */}
