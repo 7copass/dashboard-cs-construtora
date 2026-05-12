@@ -322,10 +322,67 @@ async function main() {
       let transformed: Record<string, unknown>[]
 
       if (cfg.syncStrategy === 'replace') {
+        // Tables where the API sends multiple rows per composite key (partial payment/expense events).
+        // For these we must SUM monetary fields rather than keeping the last row.
+        const AGGREGATE_TABLES: Record<string, {
+          keyFields: string[]
+          sumFields: string[]
+          latestDateField?: string
+          nonMonetaryFields: string[]
+        }> = {
+          recebimentos: {
+            keyFields: ['id_faturamento', 'numero_parcela'],
+            sumFields: ['valor_recebido', 'valor_desconto', 'valor_juros_e_multa'],
+            latestDateField: 'data_recebimento',
+            nonMonetaryFields: ['forma_recebimento', 'conta_bancaria', 'condicao_recebimento'],
+          },
+          lancamentos: {
+            keyFields: ['id_lancamento', 'numero_parcela'],
+            sumFields: ['valor_parcela'],
+            nonMonetaryFields: ['fornecedor', 'descricao', 'categoria', 'conta_bancaria'],
+          },
+          pagamentos: {
+            keyFields: ['id_lancamento', 'numero_parcela'],
+            sumFields: ['valor_pago', 'valor_desconto', 'valor_juros_e_multa'],
+            latestDateField: 'data_pagamento',
+            nonMonetaryFields: ['forma_pagamento', 'conta_bancaria'],
+          },
+        }
+
+        const aggCfg = AGGREGATE_TABLES[cfg.table]
+        if (aggCfg) {
+          const aggMap = new Map<string, Record<string, unknown>>()
+          for (const row of allTransformed) {
+            const key = aggCfg.keyFields.map(k => String(row[k] ?? '')).join('|')
+            if (!aggMap.has(key)) {
+              aggMap.set(key, { ...row })
+              continue
+            }
+            const agg = aggMap.get(key)!
+            for (const f of aggCfg.sumFields) {
+              agg[f] = (Number(agg[f]) || 0) + (Number(row[f]) || 0)
+            }
+            if (aggCfg.latestDateField) {
+              const existing = agg[aggCfg.latestDateField] as string | null
+              const incoming = row[aggCfg.latestDateField] as string | null
+              if (incoming && (!existing || incoming > existing)) {
+                agg[aggCfg.latestDateField] = incoming
+              }
+            }
+            for (const field of aggCfg.nonMonetaryFields) {
+              if (row[field]) agg[field] = row[field]
+            }
+          }
+          transformed = Array.from(aggMap.values())
+          if (transformed.length < allTransformed.length) {
+            process.stdout.write(`(aggregated ${allTransformed.length}→${transformed.length}) → `)
+          }
+        } else {
         // Dedup TRUE duplicates only (all fields match, not just composite key)
         transformed = dedupTrueDuplicates(allTransformed)
         if (transformed.length < allTransformed.length) {
           process.stdout.write(`(true-dedup ${allTransformed.length}→${transformed.length}) → `)
+        }
         }
 
         // Truncate the table first
@@ -356,6 +413,36 @@ async function main() {
         }
         if (total > 0) console.log(`✅ ${total} (replaced)`)
       } else {
+        // For recebimentos: aggregate monetary fields per (id_faturamento, numero_parcela)
+        // instead of keeping the last row — the API sends one row per partial payment event.
+        if (cfg.table === 'recebimentos') {
+          const aggMap = new Map<string, Record<string, unknown>>()
+          for (const row of allTransformed) {
+            const key = `${row['id_faturamento']}|${row['numero_parcela']}`
+            if (!aggMap.has(key)) {
+              aggMap.set(key, { ...row })
+              continue
+            }
+            const agg = aggMap.get(key)!
+            agg['valor_recebido']      = (Number(agg['valor_recebido'])      || 0) + (Number(row['valor_recebido'])      || 0)
+            agg['valor_desconto']      = (Number(agg['valor_desconto'])      || 0) + (Number(row['valor_desconto'])      || 0)
+            agg['valor_juros_e_multa'] = (Number(agg['valor_juros_e_multa']) || 0) + (Number(row['valor_juros_e_multa']) || 0)
+            // Keep the latest data_recebimento (ISO string comparison works correctly)
+            const existing = agg['data_recebimento'] as string | null
+            const incoming = row['data_recebimento'] as string | null
+            if (incoming && (!existing || incoming > existing)) {
+              agg['data_recebimento'] = incoming
+            }
+            // Update non-monetary fields from the latest row
+            for (const field of ['forma_recebimento', 'conta_bancaria', 'condicao_recebimento']) {
+              if (row[field]) agg[field] = row[field]
+            }
+          }
+          transformed = Array.from(aggMap.values())
+          if (transformed.length < allTransformed.length) {
+            process.stdout.write(`(aggregated ${allTransformed.length}→${transformed.length}) → `)
+          }
+        } else {
         // Upsert strategy: deduplicate by conflict key (keep last occurrence)
         const keyFields = cfg.conflictColumns.split(',')
         const deduped = new Map<string, Record<string, unknown>>()
@@ -366,6 +453,7 @@ async function main() {
         transformed = Array.from(deduped.values())
         if (transformed.length < allTransformed.length) {
           process.stdout.write(`(deduped ${allTransformed.length}→${transformed.length}) → `)
+        }
         }
 
         // Upsert in batches
