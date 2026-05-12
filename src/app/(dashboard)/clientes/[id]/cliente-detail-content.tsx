@@ -70,6 +70,11 @@ function UnidadeCard({
           </div>
           <div className="text-left">
             <p className="font-semibold text-[var(--text-primary)]">{unidade.nome}</p>
+            {unidade.empreendimento && (
+              <p className="text-[11px] font-semibold text-[var(--color-primary-500)] dark:text-[var(--color-primary-400)] uppercase tracking-wide leading-tight">
+                {unidade.empreendimento}
+              </p>
+            )}
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
               {total} parcela{total !== 1 ? 's' : ''} · {recebidas} recebida{recebidas !== 1 ? 's' : ''}
               {pendentes > 0 && ` · ${pendentes} pendente${pendentes !== 1 ? 's' : ''}`}

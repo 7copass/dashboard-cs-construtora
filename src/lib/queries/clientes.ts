@@ -43,6 +43,7 @@ interface ParcelaDetail {
 
 interface UnidadeDetail {
   nome: string
+  empreendimento: string
   totalFaturado: number
   totalRecebido: number
   saldoDevedor: number
@@ -292,7 +293,7 @@ export async function getClienteDetail(clienteNome: string): Promise<ClienteDeta
     // Faturamentos for this client — ordered by unit then parcela
     const { data: fatData } = await supabase
       .from('faturamentos')
-      .select('id_faturamento, id_obra, valor_parcela, data_vencimento, data_faturamento, numero_parcela, descricao')
+      .select('id_faturamento, id_obra, valor_parcela, data_vencimento, data_faturamento, numero_parcela, descricao, centro_de_custo')
       .eq('cliente', clienteNome)
       .order('descricao', { ascending: true })
       .order('numero_parcela', { ascending: true })
@@ -316,10 +317,15 @@ export async function getClienteDetail(clienteNome: string): Promise<ClienteDeta
 
     // Group faturamentos by descricao (unit name)
     const unidadeMap = new Map<string, typeof fatData>()
+    const unidadeEmpMap = new Map<string, string>() // unit → empreendimento name
     for (const f of fatData) {
       const unidade = f.descricao?.trim() || 'Sem Unidade'
       if (!unidadeMap.has(unidade)) unidadeMap.set(unidade, [])
       unidadeMap.get(unidade)!.push(f)
+      // First centro_de_custo found for this unidade wins
+      if (!unidadeEmpMap.has(unidade) && f.centro_de_custo?.trim()) {
+        unidadeEmpMap.set(unidade, f.centro_de_custo.trim())
+      }
     }
 
     let totalDias = 0
@@ -373,6 +379,7 @@ export async function getClienteDetail(clienteNome: string): Promise<ClienteDeta
 
       unidades.push({
         nome: unidadeNome,
+        empreendimento: unidadeEmpMap.get(unidadeNome) ?? '',
         totalFaturado,
         totalRecebido,
         saldoDevedor: Math.max(0, totalFaturado - totalRecebido),
