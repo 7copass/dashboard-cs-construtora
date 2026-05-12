@@ -22,7 +22,6 @@ import {
   MapPin,
   Calendar,
   ArrowLeft,
-  User,
 } from "lucide-react"
 import { KpiCard } from "@/components/cards/kpi-card"
 import { KpiCardSmall } from "@/components/cards/kpi-card-small"
@@ -596,11 +595,6 @@ export function ObraDetailContent({
               </Link>
               <h1 className="text-xl font-bold text-[var(--text-primary)] leading-tight">{info.nome}</h1>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
-                {info.cliente && (
-                  <span className="inline-flex items-center gap-1 text-sm text-[var(--text-secondary)]">
-                    <User className="size-3 opacity-60" /> {info.cliente}
-                  </span>
-                )}
                 {info.endereco && (
                   <span className="inline-flex items-center gap-1 text-xs text-[var(--text-secondary)] opacity-70">
                     <MapPin className="size-3" /> {info.endereco}
