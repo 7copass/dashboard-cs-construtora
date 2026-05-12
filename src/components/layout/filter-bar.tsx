@@ -133,7 +133,7 @@ export function FilterBar() {
     "h-9 rounded-xl border border-[var(--color-surface-200)] bg-white text-[13px] font-medium text-[var(--color-surface-700)] focus:outline-none focus:ring-2 focus:ring-[#6366f1]/20 focus:border-[var(--color-primary-500)] transition-all duration-200 dark:bg-[var(--color-surface-800)] dark:border-[var(--color-surface-700)] dark:text-[var(--color-surface-200)]";
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-white/60 dark:bg-[var(--bg-card)]/60 border border-white/40 dark:border-white/5 px-4 py-3 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] flup-glass transition-all duration-300">
+    <div className="relative z-40 flex flex-wrap items-center gap-3 rounded-2xl bg-white/60 dark:bg-[var(--bg-card)]/60 border border-white/40 dark:border-white/5 px-4 py-3 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] flup-glass transition-all duration-300">
 
       {/* Date range */}
       <div className="flex items-center gap-2">
@@ -194,7 +194,7 @@ export function FilterBar() {
         </button>
 
         {obrasOpen && obras.length > 0 && (
-          <div className="absolute top-full left-0 z-50 mt-1 w-64 rounded-xl border border-[var(--color-surface-200)] dark:border-[var(--color-surface-700)] bg-white dark:bg-[var(--color-surface-800)] shadow-lg overflow-hidden">
+          <div className="absolute top-full left-0 z-[60] mt-1 w-72 rounded-xl border border-[var(--color-surface-200)] dark:border-[var(--color-surface-700)] bg-white dark:bg-[var(--color-surface-800)] shadow-xl overflow-hidden">
             {/* Clear all */}
             {selectedObraIds.length > 0 && (
               <button
